@@ -42,10 +42,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.generateAddresses = () => {
     const zpubInput = document.getElementById('zpubInput').value.trim();
-    const listEl = document.getElementById('addressList');
+    const statusEl = document.getElementById('status');
     const errorEl = document.getElementById('error');
-
-    listEl.textContent = '';
+    
+    statusEl.textContent = '';
     errorEl.textContent = '';
 
     if (!zpubInput) {
@@ -79,12 +79,8 @@ document.addEventListener('DOMContentLoaded', () => {
       localStorage.setItem('paymentAddresses', JSON.stringify(paymentAddrs));
       localStorage.setItem('changeAddresses', JSON.stringify(changeAddrs));
 
-      // 显示在页面
-      listEl.textContent =
-        '支付地址 (m/0/*):\n' +
-        paymentAddrs.map((o) => `${o.path}: ${o.address}`).join('\n') +
-        '\n\n找零地址 (m/1/*):\n' +
-        changeAddrs.map((o) => `${o.path}: ${o.address}`).join('\n');
+      // 提示成功
+      statusEl.textContent = `已生成并保存 ${paymentAddrs.length + changeAddrs.length} 个地址到 localStorage`;
     } catch (err) {
       console.error('生成地址失败', err);
       errorEl.textContent = '生成地址失败: ' + err.message;

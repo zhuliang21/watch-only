@@ -18,11 +18,16 @@
     
     <div id="result" style="margin-top: 20px;">
         <h3>结果:</h3>
-        <p id="address" style="white-space: pre-wrap;"></p>
-        <pre id="addressList" style="white-space: pre-wrap; max-height: 400px; overflow: auto;"></pre>
+        <p id="status" style="color: green;"></p>
         <p id="error" style="color: red;"></p>
     </div>
 
-    <script src="dist/bundle.js"></script>
+    <script src="dist/index.bundle.js"></script>
+    <script src="dist/check.bundle.js"></script>
+
+    <div style="margin-top:20px;">
+        <button onclick="checkAddresses()" style="padding:10px 20px;">检查地址状态</button>
+        <button onclick="computeTotalBalance()" style="padding:10px 20px; margin-left:10px;">计算总余额</button>
+    </div>
 </body>
 </html> 
