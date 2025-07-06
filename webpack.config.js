@@ -1,0 +1,31 @@
+const path = require('path');
+
+module.exports = {
+  entry: './src/index.js',
+  output: {
+    path: path.resolve(__dirname, 'dist'),
+    filename: 'bundle.js'
+  },
+  experiments: {
+    asyncWebAssembly: true,
+    syncWebAssembly: true
+  },
+  resolve: {
+    fallback: {
+      "crypto": require.resolve("crypto-browserify"),
+      "stream": require.resolve("stream-browserify"),
+      "buffer": require.resolve("buffer"),
+      "path": require.resolve("path-browserify"),
+      "assert": require.resolve("assert/"),
+      "vm": require.resolve("vm-browserify"),
+      "process": require.resolve("process/browser"),
+      "fs": false
+    }
+  },
+  plugins: [
+    new (require('webpack')).ProvidePlugin({
+      Buffer: ['buffer', 'Buffer'],
+      process: 'process/browser'
+    })
+  ]
+}; 

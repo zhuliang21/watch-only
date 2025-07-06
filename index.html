@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bitcoin zpub 到地址转换</title>
+</head>
+<body>
+    <h1>Bitcoin zpub 到地址转换</h1>
+    
+    <div>
+        <label for="zpubInput">输入 zpub:</label>
+        <br>
+        <input type="text" id="zpubInput" placeholder="输入你的 zpub..." style="width: 500px; padding: 10px; margin: 10px 0;">
+        <br>
+        <button onclick="generateAddresses()" style="padding: 10px 20px;">生成地址列表 (100 外部 / 50 内部)</button>
+    </div>
+    
+    <div id="result" style="margin-top: 20px;">
+        <h3>结果:</h3>
+        <p id="address" style="white-space: pre-wrap;"></p>
+        <pre id="addressList" style="white-space: pre-wrap; max-height: 400px; overflow: auto;"></pre>
+        <p id="error" style="color: red;"></p>
+    </div>
+
+    <script src="dist/bundle.js"></script>
+</body>
+</html> 

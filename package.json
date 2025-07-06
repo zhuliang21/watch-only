@@ -1,0 +1,27 @@
+{
+  "name": "bitcoin-zpub-to-address",
+  "version": "1.0.0",
+  "description": "Convert Bitcoin zpub to first address",
+  "main": "index.html",
+  "scripts": {
+    "build": "webpack --mode production",
+    "dev": "webpack --mode development",
+    "start": "http-server -p 8080"
+  },
+  "dependencies": {
+    "bitcoinjs-lib": "^6.1.5",
+    "@scure/bip32": "^1.7.0",
+    "crypto-browserify": "^3.12.0",
+    "stream-browserify": "^3.0.0",
+    "buffer": "^6.0.3",
+    "path-browserify": "^1.0.1",
+    "assert": "^2.1.0",
+    "vm-browserify": "^1.1.2",
+    "process": "^0.11.10"
+  },
+  "devDependencies": {
+    "webpack": "^5.88.0",
+    "webpack-cli": "^5.1.4",
+    "http-server": "^14.1.1"
+  }
+}
