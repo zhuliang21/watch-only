@@ -17,7 +17,8 @@
     "path-browserify": "^1.0.1",
     "assert": "^2.1.0",
     "vm-browserify": "^1.1.2",
-    "process": "^0.11.10"
+    "process": "^0.11.10",
+    "chart.js": "^4.4.0"
   },
   "devDependencies": {
     "webpack": "^5.88.0",

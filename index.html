@@ -22,12 +22,20 @@
         <p id="error" style="color: red;"></p>
     </div>
 
-    <script src="dist/index.bundle.js"></script>
+    <script src="dist/generate.bundle.js"></script>
     <script src="dist/check.bundle.js"></script>
+    <script src="dist/history.bundle.js"></script>
 
     <div style="margin-top:20px;">
         <button onclick="checkAddresses()" style="padding:10px 20px;">检查地址状态</button>
         <button onclick="computeTotalBalance()" style="padding:10px 20px; margin-left:10px;">计算总余额</button>
+        <button onclick="fetchTxHistory()" style="padding:10px 20px; margin-left:10px;">拉取交易</button>
+        <button onclick="buildBalanceTable()" style="padding:10px 20px; margin-left:10px;">生成余额表</button>
+        <button onclick="drawBalanceChart()" style="padding:10px 20px; margin-left:10px;">生成余额曲线</button>
+    </div>
+
+    <div style="margin-top:20px; max-width:800px;">
+        <canvas id="balanceChart" height="300"></canvas>
     </div>
 </body>
 </html> 
