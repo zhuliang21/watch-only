@@ -5,7 +5,7 @@
   "main": "index.html",
   "scripts": {
     "build": "webpack --mode production",
-    "build:pages": "webpack --mode production && cp index.html dist/ && cp -r icon dist/ && cp manifest.json dist/ && cp sw.js dist/ && cp favicon.ico dist/",
+    "build:pages": "webpack --mode production && cp index.html dist/ && cp -r icon dist/ && cp manifest.json dist/ && cp sw.js dist/ && cp favicon.ico dist/ && cp robots.txt dist/",
     "dev": "webpack --mode development",
     "start": "http-server -p 8080"
   },
