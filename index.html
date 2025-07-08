@@ -74,6 +74,17 @@
             }
         }
 
+        @keyframes slideDown {
+            from { 
+                opacity: 0;
+                transform: translateX(-50%) translateY(-20px);
+            }
+            to { 
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+
         #gateBox {
             width: calc(100% - 64px);
             max-width: 320px;
@@ -434,10 +445,80 @@
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/sw.js').then((registration) => {
             console.log('SW registered successfully', registration);
+            
+            // 检查Service Worker更新
+            registration.addEventListener('updatefound', () => {
+              const newWorker = registration.installing;
+              console.log('新的Service Worker安装中...');
+              
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  // 有新版本可用，显示更新提示
+                  showUpdateNotification();
+                }
+              });
+            });
+            
+            // 监听控制器变化（Service Worker更新）
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+              console.log('Service Worker已更新，正在刷新页面...');
+              window.location.reload();
+            });
+            
           }).catch((err) => {
             console.error('SW registration failed', err);
           });
         });
+      }
+      
+      // 显示更新通知
+      function showUpdateNotification() {
+        const notification = document.createElement('div');
+        notification.id = 'updateNotification';
+        notification.style.cssText = `
+          position: fixed;
+          top: 20px;
+          left: 50%;
+          transform: translateX(-50%);
+          background: linear-gradient(135deg, rgba(0, 212, 170, 0.95) 0%, rgba(0, 180, 145, 0.95) 100%);
+          color: white;
+          padding: 12px 20px;
+          border-radius: 12px;
+          font-size: 14px;
+          font-weight: 500;
+          z-index: 15000;
+          cursor: pointer;
+          box-shadow: 0 8px 32px rgba(0, 212, 170, 0.3);
+          animation: slideDown 0.3s ease-out;
+          backdrop-filter: blur(10px);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+        `;
+        
+        notification.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span>🔄</span>
+            <span>有新版本可用，点击更新</span>
+          </div>
+        `;
+        
+        // 点击更新
+        notification.addEventListener('click', () => {
+          // 发送消息给Service Worker要求更新
+          if (navigator.serviceWorker.controller) {
+            navigator.serviceWorker.controller.postMessage({ action: 'skipWaiting' });
+          }
+          notification.remove();
+        });
+        
+        // 5秒后自动消失
+        setTimeout(() => {
+          if (notification.parentNode) {
+            notification.style.animation = 'slideUp 0.3s ease-out';
+            setTimeout(() => notification.remove(), 300);
+          }
+        }, 5000);
+        
+        document.body.appendChild(notification);
       }
     </script>
 </head>
