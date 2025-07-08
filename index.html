@@ -2,40 +2,1204 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bitcoin zpub 到地址转换</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>大聪明</title>
+    <!-- Favicons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="icon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="icon/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="icon/apple-touch-icon.png">
+    <link rel="manifest" href="manifest.json" />
+    <meta name="theme-color" content="#f7931a" />
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            overflow: hidden;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            touch-action: none;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        #app {
+            text-align: center;
+        }
+
+
+
+        /* Gate overlay */
+        #gateOverlay {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(20, 20, 20, 0.95) 100%);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from { 
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to { 
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        #gateBox {
+            width: calc(100% - 64px);
+            max-width: 320px;
+            background: none;
+            border: none;
+            border-radius: 0;
+            padding: 20px 0;
+            text-align: center;
+            box-shadow: none;
+            animation: slideUp 0.4s ease-out;
+            position: relative;
+            overflow: visible;
+            margin: 0 32px;
+        }
+
+
+
+
+
+        #gateInput {
+            width: calc(100% - 32px);
+            height: 88px;
+            padding: 14px 16px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 18px;
+            background: 
+                linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%),
+                rgba(255, 255, 255, 0.01);
+            backdrop-filter: blur(15px) saturate(1.2);
+            -webkit-backdrop-filter: blur(15px) saturate(1.2);
+            color: #fff;
+            font-family: 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;
+            font-size: 16px;
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            outline: none;
+            box-shadow: 
+                0 4px 16px rgba(0, 0, 0, 0.08),
+                0 1px 2px rgba(0, 0, 0, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.08),
+                inset 0 -1px 0 rgba(255, 255, 255, 0.02);
+            resize: none;
+            line-height: 1.4;
+        }
+
+        #gateInput:focus {
+            border-color: rgba(255, 255, 255, 0.25);
+            background: 
+                linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%),
+                rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(18px) saturate(1.4);
+            -webkit-backdrop-filter: blur(18px) saturate(1.4);
+            box-shadow: 
+                0 6px 24px rgba(0, 0, 0, 0.12),
+                0 2px 6px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.12),
+                inset 0 -1px 0 rgba(255, 255, 255, 0.05),
+                0 0 0 1px rgba(247, 147, 26, 0.3),
+                0 0 20px rgba(247, 147, 26, 0.1);
+        }
+
+        #gateInput::placeholder {
+            color: #666;
+            opacity: 1;
+        }
+
+        /* iOS 防止自动放大 */
+        @supports (-webkit-overflow-scrolling: touch) {
+            #gateInput {
+                font-size: 16px !important;
+                transform: translateZ(0);
+                -webkit-appearance: none;
+                -webkit-text-size-adjust: 100%;
+            }
+        }
+
+        #gateError {
+            display: none;
+            color: #ff9999;
+            font-size: 14px;
+            margin-top: 16px;
+            margin-left: 16px;
+            margin-right: 16px;
+            padding: 12px 16px;
+            background: 
+                linear-gradient(135deg, rgba(255, 107, 107, 0.06) 0%, rgba(255, 107, 107, 0.02) 100%),
+                rgba(255, 107, 107, 0.05);
+            backdrop-filter: blur(10px) saturate(1.2);
+            -webkit-backdrop-filter: blur(10px) saturate(1.2);
+            border: 1px solid rgba(255, 107, 107, 0.15);
+            border-radius: 14px;
+            animation: slideUp 0.3s ease-out;
+            box-shadow: 
+                0 4px 12px rgba(255, 107, 107, 0.08),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+
+        #gateBtn {
+            margin-top: 24px;
+            width: calc(100% - 32px);
+            margin-left: 16px;
+            margin-right: 16px;
+            padding: 15px 0;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: 
+                linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%),
+                rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(20px) saturate(1.5);
+            -webkit-backdrop-filter: blur(20px) saturate(1.5);
+            color: #e8e8e8;
+            border-radius: 18px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            box-shadow: 
+                0 8px 32px rgba(0, 0, 0, 0.12),
+                0 1px 2px rgba(0, 0, 0, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15),
+                inset 0 -1px 0 rgba(255, 255, 255, 0.05);
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #gateBtn:hover {
+            transform: translateY(-2px) scale(1.02);
+            background: 
+                linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.08) 100%),
+                rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(25px) saturate(1.8);
+            -webkit-backdrop-filter: blur(25px) saturate(1.8);
+            box-shadow: 
+                0 12px 40px rgba(0, 0, 0, 0.15),
+                0 4px 12px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.25),
+                inset 0 -1px 0 rgba(255, 255, 255, 0.1),
+                0 0 0 1px rgba(255, 255, 255, 0.05);
+            color: #f5f5f5;
+        }
+
+        #gateBtn:hover::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 50% 0%, rgba(247, 147, 26, 0.08) 0%, transparent 50%),
+                linear-gradient(135deg, rgba(255, 179, 71, 0.06) 0%, rgba(247, 147, 26, 0.06) 100%);
+            border-radius: inherit;
+            z-index: 0;
+        }
+
+        #gateBtn span {
+            position: relative;
+            z-index: 1;
+        }
+
+        #gateBtn:active {
+            transform: translateY(0) scale(0.98);
+            background: 
+                linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%),
+                rgba(255, 255, 255, 0.02);
+            box-shadow: 
+                0 4px 16px rgba(0, 0, 0, 0.12),
+                inset 0 2px 4px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        #gateBtn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            background: 
+                linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%),
+                rgba(255, 255, 255, 0.01);
+            box-shadow: 
+                0 4px 16px rgba(0, 0, 0, 0.08),
+                inset 0 1px 0 rgba(255, 255, 255, 0.08);
+            color: #999;
+        }
+
+        #gateBtn:disabled:hover {
+            transform: none;
+            background: 
+                linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%),
+                rgba(255, 255, 255, 0.01);
+        }
+
+        /* 玻璃质感按钮样式 */
+        #depositBtn:hover, #chartBtn:hover {
+            transform: translateY(-2px) scale(1.02);
+            background: 
+                linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.08) 100%),
+                rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(25px) saturate(1.8);
+            -webkit-backdrop-filter: blur(25px) saturate(1.8);
+            box-shadow: 
+                0 12px 40px rgba(0, 0, 0, 0.15),
+                0 4px 12px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.25),
+                inset 0 -1px 0 rgba(255, 255, 255, 0.1),
+                0 0 0 1px rgba(255, 255, 255, 0.05);
+            color: #f5f5f5;
+        }
+
+        #depositBtn:hover::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 50% 0%, rgba(46, 139, 87, 0.08) 0%, transparent 50%),
+                linear-gradient(135deg, rgba(50, 205, 50, 0.06) 0%, rgba(46, 139, 87, 0.06) 100%);
+            border-radius: inherit;
+            z-index: 0;
+        }
+
+        #chartBtn:hover::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 50% 0%, rgba(0, 123, 255, 0.08) 0%, transparent 50%),
+                linear-gradient(135deg, rgba(0, 123, 255, 0.06) 0%, rgba(0, 86, 179, 0.06) 100%);
+            border-radius: inherit;
+            z-index: 0;
+        }
+
+        #depositBtn:active, #chartBtn:active {
+            transform: translateY(0) scale(0.98);
+            background: 
+                linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%),
+                rgba(255, 255, 255, 0.02);
+            box-shadow: 
+                0 4px 16px rgba(0, 0, 0, 0.12),
+                inset 0 2px 4px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        /* 清除数据按钮样式 */
+        #clearDataBtn:hover {
+            opacity: 1;
+            transform: translateY(-1px) scale(1.02);
+            background: 
+                linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%),
+                rgba(255, 255, 255, 0.03);
+            border-color: rgba(255, 255, 255, 0.18);
+            backdrop-filter: blur(18px) saturate(1.4);
+            -webkit-backdrop-filter: blur(18px) saturate(1.4);
+            box-shadow: 
+                0 6px 24px rgba(0, 0, 0, 0.12),
+                0 2px 6px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.12),
+                inset 0 -1px 0 rgba(255, 255, 255, 0.05);
+            color: #d0d0d0;
+        }
+
+        #clearDataBtn:active {
+            transform: translateY(0) scale(0.98);
+            background: 
+                linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%),
+                rgba(255, 255, 255, 0.01);
+            box-shadow: 
+                0 2px 8px rgba(0, 0, 0, 0.08),
+                inset 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 图表弹窗关闭按钮样式 */
+        #chartCloseBtn:hover {
+            background: rgba(255, 255, 255, 0.2) !important;
+            color: #fff !important;
+        }
+
+        /* 图表弹窗动画 */
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+
+        /* 清除数据按钮样式 */
+        #clearDataBtn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4);
+            background: linear-gradient(135deg, #c82333 0%, #dc3545 100%);
+        }
+
+        #clearDataBtn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+        }
+
+        /* 清除数据弹窗按钮样式 */
+        #clearDataCloseBtn:hover {
+            background: rgba(255, 255, 255, 0.2) !important;
+            color: #fff !important;
+        }
+
+        #clearDataCancelBtn:hover {
+            background: rgba(255, 255, 255, 0.1) !important;
+            border-color: #777 !important;
+            color: #fff !important;
+        }
+
+        #clearDataConfirmBtn:hover {
+            background: linear-gradient(135deg, #c82333 0%, #dc3545 100%) !important;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+        }
+
+        /* 移动端响应式优化 */
+        @media (max-width: 768px) {
+            #mainButtonContainer {
+                margin-top: 60px !important;
+                gap: 12px !important;
+            }
+            
+            #depositBtn, #chartBtn {
+                padding: 14px 24px !important;
+                font-size: 16px !important;
+                width: 100%;
+                max-width: 280px;
+            }
+            
+            #chartModalContent {
+                width: calc(100vw - 24px) !important;
+                padding: 20px !important;
+                max-height: calc(100vh - 24px) !important;
+            }
+            
+            #balanceChart {
+                height: 250px !important;
+            }
+            
+            #chartBalanceDisplay {
+                font-size: 20px !important;
+            }
+            
+            #clearDataBtn {
+                padding: 10px 20px !important;
+                font-size: 13px !important;
+                bottom: 15px !important;
+            }
+        }
+    </style>
+    <!-- Service Worker 已启用 -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').then((registration) => {
+            console.log('SW registered successfully', registration);
+          }).catch((err) => {
+            console.error('SW registration failed', err);
+          });
+        });
+      }
+    </script>
 </head>
 <body>
-    <h1>Bitcoin zpub 到地址转换</h1>
-    
-    <div>
-        <label for="zpubInput">输入 zpub:</label>
-        <br>
-        <input type="text" id="zpubInput" placeholder="输入你的 zpub..." style="width: 500px; padding: 10px; margin: 10px 0;">
-        <br>
-        <button onclick="generateAddresses()" style="padding: 10px 20px;">生成地址列表 (100 外部 / 50 内部)</button>
-    </div>
-    
-    <div id="result" style="margin-top: 20px;">
-        <h3>结果:</h3>
-        <p id="status" style="color: green;"></p>
-        <p id="error" style="color: red;"></p>
+    <!-- Gate overlay -->
+    <div id="gateOverlay" style="display:none;">
+        <div id="gateBox">
+            <textarea id="gateInput" placeholder="zpub..."></textarea>
+            <p id="gateError"></p>
+            <button id="gateBtn"><span>进入</span></button>
+        </div>
     </div>
 
+    <div id="balanceTop" style="position:fixed;top:40px;left:50%;transform:translateX(-50%);z-index:100;text-align:center;">
+        <h2 id="mainBalance" style="margin:0;font-size:28px;color:#f7931a;font-family:'SFMono-Regular',Menlo,Consolas,'Liberation Mono',monospace;text-align:center;white-space:nowrap;cursor:pointer;"></h2>
+        <div id="incomingBalance" style="
+            margin-top:8px;
+            height:26px;
+            font-size:14px;
+            color:#00d4aa;
+            font-family:'SFMono-Regular',Menlo,Consolas,'Liberation Mono',monospace;
+            background:rgba(0,212,170,0.1);
+            border:1px solid rgba(0,212,170,0.2);
+            border-radius:8px;
+            padding:4px 8px;
+            white-space:nowrap;
+            opacity:0;
+            transition:opacity 0.2s ease;
+        ">
+            <span style="opacity:0.7;">未确认：</span> <span id="incomingAmount"></span>
+        </div>
+    </div>
+
+    <div id="app" style="display:flex;flex-direction:column;align-items:center;">
+        <div id="mainButtonContainer" style="margin-top:100px; display:flex; flex-direction:row; align-items:center; gap:32px; flex-wrap:wrap; justify-content:center;">
+            <button id="depositBtn" style="
+                padding: 14px 18px;
+                border: 1px solid rgba(255, 255, 255, 0.15);
+                background: 
+                    linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%),
+                    rgba(255, 255, 255, 0.02);
+                backdrop-filter: blur(20px) saturate(1.5);
+                -webkit-backdrop-filter: blur(20px) saturate(1.5);
+                color: #e8e8e8;
+                border-radius: 18px;
+                font-size: 15px;
+                font-weight: 500;
+                cursor: pointer;
+                transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+                box-shadow: 
+                    0 8px 32px rgba(0, 0, 0, 0.12),
+                    0 1px 2px rgba(0, 0, 0, 0.2),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+                    inset 0 -1px 0 rgba(255, 255, 255, 0.05);
+                letter-spacing: 0.3px;
+                display: none;
+                min-width: 110px;
+                position: relative;
+                overflow: hidden;
+            ">
+                <span style="position:relative;z-index:1;">💰 存入</span>
+            </button>
+            
+            <button id="chartBtn" style="
+                padding: 14px 18px;
+                border: 1px solid rgba(255, 255, 255, 0.15);
+                background: 
+                    linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%),
+                    rgba(255, 255, 255, 0.02);
+                backdrop-filter: blur(20px) saturate(1.5);
+                -webkit-backdrop-filter: blur(20px) saturate(1.5);
+                color: #e8e8e8;
+                border-radius: 18px;
+                font-size: 15px;
+                font-weight: 500;
+                cursor: pointer;
+                transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+                box-shadow: 
+                    0 8px 32px rgba(0, 0, 0, 0.12),
+                    0 1px 2px rgba(0, 0, 0, 0.2),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+                    inset 0 -1px 0 rgba(255, 255, 255, 0.05);
+                letter-spacing: 0.3px;
+                display: none;
+                min-width: 110px;
+                position: relative;
+                overflow: hidden;
+            ">
+                <span style="position:relative;z-index:1;">📈 曲线</span>
+            </button>
+        </div>
+        
+        <!-- 清除数据按钮 -->
+        <div id="clearDataContainer" style="position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 100;">
+            <button id="clearDataBtn" style="
+                padding: 10px 16px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                background: 
+                    linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%),
+                    rgba(255, 255, 255, 0.01);
+                backdrop-filter: blur(15px) saturate(1.2);
+                -webkit-backdrop-filter: blur(15px) saturate(1.2);
+                color: #aaa;
+                border-radius: 16px;
+                font-size: 13px;
+                font-weight: 400;
+                cursor: pointer;
+                transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+                box-shadow: 
+                    0 4px 16px rgba(0, 0, 0, 0.08),
+                    0 1px 2px rgba(0, 0, 0, 0.15),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+                    inset 0 -1px 0 rgba(255, 255, 255, 0.02);
+                letter-spacing: 0.2px;
+                display: none;
+                opacity: 0.8;
+            ">
+                🗑️ 清除数据
+            </button>
+        </div>
+    </div>
+
+    <!-- 清除数据确认弹窗 -->
+    <div id="clearDataModal" style="
+        position: fixed;
+        inset: 0;
+        background: linear-gradient(135deg, rgba(0, 0, 0, 0.8) 0%, rgba(20, 20, 20, 0.9) 100%);
+        backdrop-filter: blur(15px);
+        -webkit-backdrop-filter: blur(15px);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 12000;
+        animation: fadeIn 0.3s ease-out;
+    ">
+        <div id="clearDataModalContent" style="
+            background: #000;
+            border: 1px solid #333;
+            border-radius: 20px;
+            padding: 32px 28px;
+            width: calc(100vw - 48px);
+            max-width: 360px;
+            text-align: center;
+            box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.5),
+                0 0 20px rgba(220, 53, 69, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            animation: slideUp 0.4s ease-out;
+            position: relative;
+        ">
+            <!-- 关闭按钮 -->
+            <button id="clearDataCloseBtn" style="
+                position: absolute;
+                top: 12px;
+                right: 12px;
+                width: 28px;
+                height: 28px;
+                border: none;
+                background: rgba(255, 255, 255, 0.1);
+                color: #ccc;
+                border-radius: 50%;
+                font-size: 14px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: all 0.3s ease;
+                z-index: 10;
+            ">✕</button>
+            
+            <!-- 警告图标 -->
+            <div style="font-size: 48px; margin-bottom: 16px;">🗑️</div>
+            
+            <!-- 标题 -->
+            <h3 style="margin: 0 0 16px 0; color: #fff; font-size: 20px; font-weight: 600;">清除所有数据</h3>
+            
+            <!-- 说明文字 -->
+            <p style="margin: 0 0 24px 0; color: #ccc; font-size: 15px; line-height: 1.5;">
+                将删除当前钱包的所有数据<br/>
+                删除后需要重新输入 zpub 才能进入
+            </p>
+            
+            <!-- 按钮组 -->
+            <div style="display: flex; gap: 12px; justify-content: center;">
+                <button id="clearDataCancelBtn" style="
+                    padding: 12px 24px;
+                    border: 1px solid #555;
+                    background: transparent;
+                    color: #ccc;
+                    border-radius: 8px;
+                    font-size: 14px;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                ">取消</button>
+                
+                <button id="clearDataConfirmBtn" style="
+                    padding: 12px 24px;
+                    border: none;
+                    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+                    color: white;
+                    border-radius: 8px;
+                    font-size: 14px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                ">确认删除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 余额曲线图表容器 -->
+    <div id="chartModal" style="
+        position: fixed;
+        inset: 0;
+        background: linear-gradient(135deg, rgba(0, 0, 0, 0.8) 0%, rgba(20, 20, 20, 0.9) 100%);
+        backdrop-filter: blur(15px);
+        -webkit-backdrop-filter: blur(15px);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 11000;
+        animation: fadeIn 0.3s ease-out;
+    ">
+        <div id="chartModalContent" style="
+            background: #000;
+            border: 1px solid #333;
+            border-radius: 20px;
+            padding: 24px;
+            width: calc(100vw - 48px);
+            max-width: 380px;
+            max-height: calc(100vh - 48px);
+            position: relative;
+            box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.5),
+                0 0 20px rgba(0, 123, 255, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            animation: slideUp 0.4s ease-out;
+        ">
+            <!-- 关闭按钮 -->
+            <button id="chartCloseBtn" style="
+                position: absolute;
+                top: 12px;
+                right: 12px;
+                width: 28px;
+                height: 28px;
+                border: none;
+                background: rgba(255, 255, 255, 0.1);
+                color: #ccc;
+                border-radius: 50%;
+                font-size: 14px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: all 0.3s ease;
+                z-index: 10;
+            ">✕</button>
+            
+            <!-- 余额显示 -->
+            <div style="margin: 16px 0 20px 0; padding-right: 40px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px;">
+                <div id="chartBalanceDisplay" style="
+                    color: #00d4aa;
+                    font-size: 24px;
+                    font-weight: bold;
+                    font-family: 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;
+                "></div>
+                <div id="chartDateDisplay" style="color: #00d4aa; font-size: 16px; font-family: 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;"></div>
+            </div>
+            
+            <!-- 图表容器 -->
+            <div style="background: #000; border-radius: 12px; position: relative;">
+                <canvas id="balanceChart" style="width: 100%; height: 300px;"></canvas>
+            </div>
+        </div>
+    </div>
+
+
+
+    <script src="dist/gate.bundle.js"></script>
     <script src="dist/generate.bundle.js"></script>
     <script src="dist/check.bundle.js"></script>
     <script src="dist/history.bundle.js"></script>
+    <script src="dist/update.bundle.js"></script>
+    <script>
+      const verifyZpub = window.verifyZpub;
+      const overlay = document.getElementById('gateOverlay');
+      const btn = document.getElementById('gateBtn');
+      const input = document.getElementById('gateInput');
+      const err = document.getElementById('gateError');
 
-    <div style="margin-top:20px;">
-        <button onclick="checkAddresses()" style="padding:10px 20px;">检查地址状态</button>
-        <button onclick="computeTotalBalance()" style="padding:10px 20px; margin-left:10px;">计算总余额</button>
-        <button onclick="fetchTxHistory()" style="padding:10px 20px; margin-left:10px;">拉取交易</button>
-        <button onclick="buildBalanceTable()" style="padding:10px 20px; margin-left:10px;">生成余额表</button>
-        <button onclick="drawBalanceChart()" style="padding:10px 20px; margin-left:10px;">生成余额曲线</button>
-    </div>
+      // 没有 zpub → 显示验证框
+      if (!localStorage.currentZpub) {
+        overlay.style.display = 'flex';
+      } else {
+        overlay.style.display = 'none';   // 这句保险，可省
+      }
 
-    <div style="margin-top:20px; max-width:800px;">
-        <canvas id="balanceChart" height="300"></canvas>
-    </div>
+      async function fullSetup(zpub) {
+        try {
+          btn.querySelector('span').textContent = '正在准备';
+          
+          console.log('开始派生地址…');
+          generateAddresses();
+          console.log('地址已生成');
+
+          console.log('查询地址状态…');
+          await checkAddresses();
+          console.log('addressStatuses 保存完毕');
+
+          console.log('计算总余额…');
+          computeTotalBalance();
+          console.log('totalBalance 已写入');
+
+          console.log('拉取交易…');
+          await fetchTxHistory();
+          console.log('txDeltas 已写入');
+
+          console.log('生成余额表…');
+          buildBalanceTable();
+          console.log('balanceTimeline 已写入');
+
+          updateMainBalance();
+
+          // 显示存入按钮
+          showDepositButton();
+
+          overlay.style.display = 'none';
+        } catch (e) {
+          console.error(e);
+          btn.disabled = false;
+          btn.querySelector('span').textContent = '初始化失败';
+          // 3秒后恢复按钮状态
+          setTimeout(() => {
+            btn.querySelector('span').textContent = '进入';
+          }, 3000);
+        }
+      }
+
+      async function attempt() {
+        const z = input.value.trim();
+        err.style.display = 'none';
+        if (!z) {
+          btn.querySelector('span').textContent = '请输入 zpub';
+          setTimeout(() => {
+            btn.querySelector('span').textContent = '进入';
+          }, 2000);
+          return;
+        }
+        if (!z.startsWith('zpub')) {
+          btn.querySelector('span').textContent = '格式错误';
+          setTimeout(() => {
+            btn.querySelector('span').textContent = '进入';
+          }, 2000);
+          return;
+        }
+        btn.disabled = true;
+        btn.querySelector('span').textContent = '验证中…';
+
+        const ok = await verifyZpub(z);
+        if (!ok) {
+          btn.disabled = false;
+          btn.querySelector('span').textContent = '无授权';
+          setTimeout(() => {
+            btn.querySelector('span').textContent = '进入';
+          }, 3000);
+          return;
+        }
+
+        // 验证成功，显示成功状态
+        btn.querySelector('span').textContent = '验证成功';
+        
+        // 短暂延迟后开始初始化
+        setTimeout(async () => {
+          // 在写入 zpub 前清空旧数据
+          localStorage.clear();
+          localStorage.currentZpub = z;
+          await fullSetup(z);
+        }, 1000);
+      }
+
+      // 如果已有 zpub，则自动进入主页
+      if (localStorage.currentZpub) {
+        overlay.style.display = 'none';
+        updateMainBalance();
+        showDepositButton();
+      }
+
+      btn.addEventListener('click', attempt);
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') attempt();
+      });
+
+      function updateMainBalance(){
+        try{
+          const tb=JSON.parse(localStorage.totalBalance||'null');
+          if(!tb){return;}
+          const balEl=document.getElementById('mainBalance');
+          if(balEl){
+            balEl.textContent=tb.btc;
+            balEl.style.color='#f7931a'; // 确保比特币余额显示为正确的黄色
+          }
+          
+          // 更新 incoming 信息
+          updateIncomingBalance();
+        }catch(e){console.error(e);}
+      }
+
+      function updateIncomingBalance(){
+        try{
+          const incomingData=JSON.parse(localStorage.mempoolIncomingTotal||'null');
+          const incomingEl=document.getElementById('incomingBalance');
+          const incomingAmountEl=document.getElementById('incomingAmount');
+          
+          if(!incomingEl || !incomingAmountEl) return;
+          
+          if(incomingData && incomingData.totalSat && incomingData.totalSat !== 0){
+            const incomingBTC = (Math.abs(incomingData.totalSat) / 1e8).toFixed(8);
+            const sign = incomingData.totalSat > 0 ? '+' : '-';
+            const isPositive = incomingData.totalSat > 0;
+            
+            incomingAmountEl.textContent = `${sign}${incomingBTC}`;
+            
+            // 根据正负数设置颜色和边框
+            if(isPositive){
+              incomingEl.style.color = '#00d4aa';
+              incomingEl.style.background = 'rgba(0,212,170,0.1)';
+              incomingEl.style.borderColor = 'rgba(0,212,170,0.2)';
+            } else {
+              incomingEl.style.color = '#ff6b6b';
+              incomingEl.style.background = 'rgba(255,107,107,0.1)';
+              incomingEl.style.borderColor = 'rgba(255,107,107,0.2)';
+            }
+            
+            incomingEl.style.opacity = '1';
+          } else {
+            incomingEl.style.opacity = '0';
+          }
+        }catch(e){console.error(e);}
+      }
+
+      // 余额显示切换功能
+      let isShowingRMB = false;
+      let rmbTimeout = null;
+      
+      function showRMBBalance() {
+        if (isShowingRMB) return; // 防止重复点击
+        
+        try {
+          const rmbData = JSON.parse(localStorage.getItem('rmbPrice') || 'null');
+          if (!rmbData || !rmbData.totalRMB) return;
+          
+          const balEl = document.getElementById('mainBalance');
+          if (!balEl) return;
+          
+          isShowingRMB = true;
+          
+          // 显示人民币余额（整数位，百元粉色）
+          balEl.textContent = `¥ ${Math.round(rmbData.totalRMB).toLocaleString('zh-CN')}`;
+          balEl.style.color = '#f4a6b4'; // 百元粉色（更接近真实颜色）
+          
+          // 3秒后恢复比特币显示
+          if (rmbTimeout) clearTimeout(rmbTimeout);
+          rmbTimeout = setTimeout(() => {
+            updateMainBalance(); // 恢复比特币余额显示（包含正确的颜色）
+            isShowingRMB = false;
+          }, 3000);
+          
+        } catch (e) {
+          console.error('显示人民币余额失败:', e);
+        }
+      }
+
+      // 自动检测功能
+      function startAutoDetectionOnIndex() {
+        // 检查是否有必要的数据才启动自动检测
+        if (!localStorage.currentZpub || !localStorage.addressStatuses) {
+          console.log('缺少必要数据，跳过自动检测');
+          return;
+        }
+
+        // 如果自动检测功能可用且未运行，则启动
+        if (typeof window.startAutoDetectSilent === 'function' && typeof window.getAutoDetectStatus === 'function') {
+          const status = window.getAutoDetectStatus();
+          if (!status.isAutoDetecting) {
+            console.log('🔄 启动自动检测 (30秒间隔)');
+            window.startAutoDetectSilent();
+          }
+        }
+      }
+
+      // 监听自动检测更新事件，刷新主页面余额显示
+      function setupAutoUpdateListener() {
+        // 创建一个定时器来检查余额更新
+        setInterval(() => {
+          if (window.getAutoDetectStatus && window.getAutoDetectStatus().isAutoDetecting) {
+            updateMainBalance(); // 定期更新主页面余额显示
+          }
+        }, 5000); // 每5秒检查一次
+      }
+
+      // 页面可见性变化处理
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && localStorage.currentZpub) {
+          // 页面变为可见时启动自动检测
+          setTimeout(startAutoDetectionOnIndex, 1000); // 延迟1秒确保所有脚本加载完成
+          updateMainBalance(); // 同时更新余额显示
+        }
+      });
+
+      // 页面加载完成后启动自动检测
+      window.addEventListener('load', () => {
+        if (localStorage.currentZpub) {
+          setTimeout(startAutoDetectionOnIndex, 2000); // 延迟2秒确保所有脚本加载完成
+          setTimeout(setupAutoUpdateListener, 3000); // 延迟3秒后开始监听更新
+        }
+        
+        // 添加余额点击事件
+        const balEl = document.getElementById('mainBalance');
+        if (balEl) {
+          balEl.addEventListener('click', showRMBBalance);
+        }
+      });
+
+      // 显示存入按钮、余额曲线按钮和清除数据按钮
+      function showDepositButton() {
+        const depositBtn = document.getElementById('depositBtn');
+        const chartBtn = document.getElementById('chartBtn');
+        const clearDataBtn = document.getElementById('clearDataBtn');
+        
+        if (depositBtn) {
+          depositBtn.style.display = 'block';
+          depositBtn.addEventListener('click', handleDepositClick);
+        }
+        
+        if (chartBtn) {
+          chartBtn.style.display = 'block';
+          chartBtn.addEventListener('click', handleChartClick);
+        }
+        
+        if (clearDataBtn) {
+          clearDataBtn.style.display = 'block';
+          clearDataBtn.addEventListener('click', handleClearDataClick);
+        }
+      }
+
+      // 处理存入按钮点击
+      function handleDepositClick() {
+        // 检查是否有必要的数据
+        if (!localStorage.currentZpub) {
+          alert('请先进入钱包');
+          return;
+        }
+
+        // 调用现有的获取接收地址函数
+        if (typeof window.getReceiveAddress === 'function') {
+          window.getReceiveAddress();
+        } else {
+          // 如果函数还未加载，显示临时提示
+          alert('系统正在初始化，请稍后再试');
+        }
+      }
+
+      // 处理余额曲线按钮点击
+      async function handleChartClick() {
+        // 检查是否有必要的数据
+        if (!localStorage.currentZpub) {
+          alert('请先进入钱包');
+          return;
+        }
+
+        // 显示加载状态
+        const chartBtn = document.getElementById('chartBtn');
+        const originalText = chartBtn.textContent;
+        chartBtn.textContent = '📊 准备中...';
+        chartBtn.disabled = true;
+
+        try {
+          // 确保有必要的数据
+          await ensureChartData();
+          
+          // 显示图表弹窗
+          showChartModal();
+          
+        } catch (error) {
+          console.error('显示余额曲线失败:', error);
+          alert('显示余额曲线失败: ' + error.message);
+        } finally {
+          // 恢复按钮状态
+          chartBtn.textContent = originalText;
+          chartBtn.disabled = false;
+        }
+      }
+
+      // 确保图表数据存在
+      async function ensureChartData() {
+        // 检查是否有余额时间线数据
+        const balanceTimeline = localStorage.getItem('balanceTimeline');
+        if (!balanceTimeline || balanceTimeline === '[]') {
+          
+          // 检查是否有交易增量数据
+          const txDeltas = localStorage.getItem('txDeltas');
+          if (!txDeltas || txDeltas === '[]') {
+            // 需要先拉取交易历史
+            if (typeof window.fetchTxHistory === 'function') {
+              await window.fetchTxHistory();
+            } else {
+              throw new Error('交易历史功能未加载');
+            }
+          }
+          
+          // 生成余额时间线
+          if (typeof window.buildBalanceTable === 'function') {
+            window.buildBalanceTable();
+          } else {
+            throw new Error('余额表生成功能未加载');
+          }
+        }
+      }
+
+      // 显示图表弹窗
+      function showChartModal() {
+        const modal = document.getElementById('chartModal');
+        const closeBtn = document.getElementById('chartCloseBtn');
+        
+        if (!modal) return;
+        
+        modal.style.display = 'flex';
+        
+        // 绑定关闭事件
+        const closeModal = () => {
+          modal.style.animation = 'fadeOut 0.2s ease-out';
+          setTimeout(() => {
+            modal.style.display = 'none';
+            modal.style.animation = 'fadeIn 0.3s ease-out';
+          }, 200);
+        };
+        
+        // 点击关闭按钮
+        closeBtn.onclick = closeModal;
+        
+        // 点击空白处关闭
+        modal.onclick = (e) => {
+          if (e.target === modal) closeModal();
+        };
+        
+        // ESC键关闭
+        const handleEscKey = (e) => {
+          if (e.key === 'Escape') {
+            closeModal();
+            document.removeEventListener('keydown', handleEscKey);
+          }
+        };
+        document.addEventListener('keydown', handleEscKey);
+        
+        // 延迟绘制图表，确保DOM已渲染
+        setTimeout(() => {
+          if (typeof window.drawBalanceChart === 'function') {
+            // 重新定义元素ID以适配弹窗中的元素
+            const originalBalanceDisplay = document.getElementById('balanceDisplay');
+            const originalDateDisplay = document.getElementById('dateDisplay');
+            
+            // 临时更改ID映射
+            const chartBalanceDisplay = document.getElementById('chartBalanceDisplay');
+            const chartDateDisplay = document.getElementById('chartDateDisplay');
+            
+            if (chartBalanceDisplay) chartBalanceDisplay.id = 'balanceDisplay';
+            if (chartDateDisplay) chartDateDisplay.id = 'dateDisplay';
+            
+            // 绘制图表
+            window.drawBalanceChart();
+            
+            // 恢复原始ID
+            if (chartBalanceDisplay) chartBalanceDisplay.id = 'chartBalanceDisplay';
+            if (chartDateDisplay) chartDateDisplay.id = 'chartDateDisplay';
+            
+          } else {
+            console.error('图表绘制功能未加载');
+                     }
+         }, 100);
+       }
+
+      // 处理清除数据按钮点击
+      function handleClearDataClick() {
+        showClearDataModal();
+      }
+
+      // 显示清除数据确认弹窗
+      function showClearDataModal() {
+        const modal = document.getElementById('clearDataModal');
+        const closeBtn = document.getElementById('clearDataCloseBtn');
+        const cancelBtn = document.getElementById('clearDataCancelBtn');
+        const confirmBtn = document.getElementById('clearDataConfirmBtn');
+        
+        if (!modal) return;
+        
+        modal.style.display = 'flex';
+        
+        // 关闭弹窗函数
+        const closeModal = () => {
+          modal.style.animation = 'fadeOut 0.2s ease-out';
+          setTimeout(() => {
+            modal.style.display = 'none';
+            modal.style.animation = 'fadeIn 0.3s ease-out';
+          }, 200);
+        };
+        
+        // 执行清除数据
+        const performClearData = async () => {
+          try {
+            // 更新确认按钮状态
+            confirmBtn.textContent = '清除中...';
+            confirmBtn.disabled = true;
+            cancelBtn.disabled = true;
+            
+            // 清除所有localStorage数据
+            localStorage.clear();
+            
+            // 短暂延迟后刷新页面
+            setTimeout(() => {
+              window.location.reload();
+            }, 500);
+            
+          } catch (error) {
+            console.error('清除数据失败:', error);
+            
+            // 恢复按钮状态
+            confirmBtn.textContent = '确认删除';
+            confirmBtn.disabled = false;
+            cancelBtn.disabled = false;
+            
+            // 这里可以添加错误提示
+            alert('清除数据失败: ' + error.message);
+          }
+        };
+        
+        // 绑定事件（移除旧的事件监听器）
+        const newCloseBtn = closeBtn.cloneNode(true);
+        const newCancelBtn = cancelBtn.cloneNode(true);
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+        
+        closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+        cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+        
+        // 点击关闭按钮
+        newCloseBtn.onclick = closeModal;
+        
+        // 点击取消按钮
+        newCancelBtn.onclick = closeModal;
+        
+        // 点击确认按钮
+        newConfirmBtn.onclick = performClearData;
+        
+        // 点击空白处关闭
+        modal.onclick = (e) => {
+          if (e.target === modal) closeModal();
+        };
+        
+        // ESC键关闭
+        const handleEscKey = (e) => {
+          if (e.key === 'Escape') {
+            closeModal();
+            document.removeEventListener('keydown', handleEscKey);
+          }
+        };
+        document.addEventListener('keydown', handleEscKey);
+      }
+    </script>
 </body>
-</html> 
+</html>

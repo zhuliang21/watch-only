@@ -9,19 +9,21 @@ document.addEventListener('DOMContentLoaded', () => {
   console.log('HDKey 初始化完成');
 
   window.generateAddresses = () => {
-    const zpubInput = document.getElementById('zpubInput').value.trim();
+    let zpubInputEl = document.getElementById('zpubInput');
+    const zpubInput = zpubInputEl ? zpubInputEl.value.trim() : (localStorage.currentZpub || '').trim();
     const statusEl = document.getElementById('status');
     const errorEl = document.getElementById('error');
-
-    statusEl.textContent = '';
-    errorEl.textContent = '';
+    const setStatus = (msg)=>{ statusEl ? statusEl.textContent = msg : console.log('STATUS:',msg); };
+    const setError = (msg)=>{ errorEl ? errorEl.textContent = msg : console.error('ERROR:',msg); };
+    if(statusEl) statusEl.textContent='';
+    if(errorEl) errorEl.textContent='';
 
     if (!zpubInput) {
-      errorEl.textContent = '请输入 zpub';
+      setError('请输入 zpub');
       return;
     }
     if (!zpubInput.startsWith('zpub')) {
-      errorEl.textContent = '扩展公钥应以 zpub 开头';
+      setError('扩展公钥应以 zpub 开头');
       return;
     }
 
@@ -50,10 +52,10 @@ document.addEventListener('DOMContentLoaded', () => {
       localStorage.setItem('changeAddresses', JSON.stringify(changeAddrs));
 
       // 提示成功
-      statusEl.textContent = `已生成并保存 ${paymentAddrs.length + changeAddrs.length} 个地址到 localStorage`;
+      setStatus(`已生成并保存 ${paymentAddrs.length + changeAddrs.length} 个地址到 localStorage`);
     } catch (err) {
       console.error('生成地址失败', err);
-      errorEl.textContent = '生成地址失败: ' + err.message;
+      setError('生成地址失败: ' + err.message);
     }
   };
 }); 

@@ -4,7 +4,9 @@ module.exports = {
   entry: {
     generate: './src/generate.js',
     check: './src/check.js',
-    history: './src/history.js'
+    history: './src/history.js',
+    gate: './src/gate.js',
+    update: './src/update.js'
   },
   output: {
     path: path.resolve(__dirname, 'dist'),
