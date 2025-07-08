@@ -2,11 +2,12 @@
 const CACHE_NAME = 'btc-wallet-cache-v1';
 const OFFLINE_URLS = [
   '/',
-  '/test.html',
   '/manifest.json',
-  '/dist/generate.bundle.js',
-  '/dist/check.bundle.js',
-  '/dist/history.bundle.js'
+  '/generate.bundle.js',
+  '/check.bundle.js',
+  '/history.bundle.js',
+  '/gate.bundle.js',
+  '/update.bundle.js'
 ];
 
 self.addEventListener('install', (event) => {
