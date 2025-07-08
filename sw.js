@@ -1,5 +1,5 @@
 // Basic service worker for Bitcoin Watch-Only Wallet PWA
-const CACHE_NAME = 'btc-wallet-cache-v2';
+const CACHE_NAME = 'btc-wallet-cache-v3';
 const OFFLINE_URLS = [
   '/',
   '/manifest.json',

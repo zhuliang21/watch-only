@@ -1,6 +1,6 @@
 {
   "name": "bitcoin-zpub-to-address",
-  "version": "1.0.0",
+  "version": "0.3.0",
   "description": "Convert Bitcoin zpub to first address",
   "main": "index.html",
   "scripts": {
