@@ -446,6 +446,11 @@
           navigator.serviceWorker.register('/sw.js').then((registration) => {
             console.log('SW registered successfully', registration);
             
+            // 若已有等待中的新版本，直接提示
+            if (registration.waiting && navigator.serviceWorker.controller) {
+              showUpdateNotification(registration);
+            }
+
             // 检查Service Worker更新
             registration.addEventListener('updatefound', () => {
               const newWorker = registration.installing;
@@ -454,7 +459,7 @@
               newWorker.addEventListener('statechange', () => {
                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                   // 有新版本可用，显示更新提示
-                  showUpdateNotification();
+                  showUpdateNotification(registration);
                 }
               });
             });
@@ -464,6 +469,11 @@
               console.log('Service Worker已更新，正在刷新页面...');
               window.location.reload();
             });
+
+            // 定期检查更新
+            setInterval(() => {
+              registration.update();
+            }, 60 * 60 * 1000);
             
           }).catch((err) => {
             console.error('SW registration failed', err);
@@ -472,7 +482,7 @@
       }
       
       // 显示更新通知
-      function showUpdateNotification() {
+      function showUpdateNotification(registration) {
         const notification = document.createElement('div');
         notification.id = 'updateNotification';
         notification.style.cssText = `
@@ -504,7 +514,9 @@
         // 点击更新
         notification.addEventListener('click', () => {
           // 发送消息给Service Worker要求更新
-          if (navigator.serviceWorker.controller) {
+          if (registration && registration.waiting) {
+            registration.waiting.postMessage({ action: 'skipWaiting' });
+          } else if (navigator.serviceWorker.controller) {
             navigator.serviceWorker.controller.postMessage({ action: 'skipWaiting' });
           }
           notification.remove();
