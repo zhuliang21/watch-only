@@ -1081,7 +1081,7 @@
         }
         const tz = localStorage.userTimeZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
         listEl.innerHTML = recent.map((d) => {
-          const amountSat = Math.abs(d.d);
+          const amountSat = Math.abs(d.d).toLocaleString('en-US');
           const isPositive = d.d >= 0;
           const color = isPositive ? '#00d4aa' : '#ff6b6b';
           const sign = isPositive ? '+' : '-';
