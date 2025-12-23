@@ -43,9 +43,10 @@ window.checkAddresses = async function () {
         const data = await fetchBalances(addrs);
         for (const addrObj of slice) {
           const info = data[addrObj.address];
-          const used = info && (info.n_tx > 0 || info.final_balance > 0);
+          const txCount = info && typeof info.n_tx === 'number' ? info.n_tx : 0;
+          const used = info && (txCount > 0 || info.final_balance > 0);
           const balance = info ? info.final_balance : 0;
-          result.push({ ...addrObj, used, balance });
+          result.push({ ...addrObj, used, balance, n_tx: txCount });
           if (used) {
             consecutiveUnused = 0;
           } else {
@@ -301,18 +302,21 @@ function showQrModal(address) {
   qrContainer.appendChild(svg);
   box.appendChild(qrContainer);
 
-  // 地址文字，可点击复制
+  // 地址文字展示
   const addrEl = document.createElement('div');
   addrEl.style.cssText = `
-    background: rgba(247, 147, 26, 0.15);
-    border: 1px solid rgba(247, 147, 26, 0.3);
-    border-radius: 12px;
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%),
+      rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 14px;
     padding: 12px 16px;
     margin-bottom: 16px;
-    cursor: pointer;
     transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
+    backdrop-filter: blur(16px) saturate(1.3);
+    -webkit-backdrop-filter: blur(16px) saturate(1.3);
   `;
   
   const addrText = document.createElement('p');
@@ -326,34 +330,28 @@ function showQrModal(address) {
     font-family: 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;
   `;
   
-  const copyHint = document.createElement('p');
-  copyHint.textContent = '点击复制';
-  copyHint.style.cssText = `
-    margin: 8px 0 0 0;
-    font-size: 11px;
-    color: #ccc;
-    font-weight: 500;
-    text-align: center;
-  `;
-  
   addrEl.appendChild(addrText);
-  addrEl.appendChild(copyHint);
   box.appendChild(addrEl);
 
-  // 地址悬停效果
-  addrEl.addEventListener('mouseenter', () => {
-    addrEl.style.background = 'rgba(247, 147, 26, 0.25)';
-    addrEl.style.transform = 'scale(1.02)';
-    copyHint.textContent = '点击复制地址';
-    copyHint.style.color = '#f7931a';
-  });
-  
-  addrEl.addEventListener('mouseleave', () => {
-    addrEl.style.background = 'rgba(247, 147, 26, 0.15)';
-    addrEl.style.transform = 'scale(1)';
-    copyHint.textContent = '点击复制';
-    copyHint.style.color = '#ccc';
-  });
+  // 复制按钮
+  const copyBtn = document.createElement('button');
+  copyBtn.textContent = '复制地址';
+  copyBtn.style.cssText = `
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: 
+      linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%),
+      rgba(255, 255, 255, 0.02);
+    backdrop-filter: blur(16px) saturate(1.3);
+    -webkit-backdrop-filter: blur(16px) saturate(1.3);
+    color: #e8e8e8;
+    border-radius: 14px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  `;
 
   // 改进的复制函数，兼容iOS Safari
   const copyToClipboard = async (text) => {
@@ -498,42 +496,42 @@ function showQrModal(address) {
     }, 100);
   };
 
-  // 地址点击复制
-  addrEl.addEventListener('click', async () => {
+  const handleCopy = async () => {
     try {
       const success = await copyToClipboard(address);
       
       if (success) {
         // 复制成功
-        addrText.textContent = '✓ 已复制到剪贴板';
-        addrText.style.color = '#32cd32';
-        copyHint.textContent = '复制成功！';
-        copyHint.style.color = '#32cd32';
-        addrEl.style.background = 'rgba(50, 205, 50, 0.1)';
-        addrEl.style.borderColor = 'rgba(50, 205, 50, 0.3)';
+        addrText.textContent = address;
+        addrText.style.color = '#f7931a';
+        copyBtn.textContent = '已复制';
+        addrEl.style.borderColor = 'rgba(255, 255, 255, 0.35)';
         
         setTimeout(() => {
           addrText.textContent = address;
           addrText.style.color = '#f7931a';
-          copyHint.textContent = '点击复制';
-          copyHint.style.color = '#ccc';
-          addrEl.style.background = 'rgba(247, 147, 26, 0.15)';
-          addrEl.style.borderColor = 'rgba(247, 147, 26, 0.3)';
+          copyBtn.textContent = '复制地址';
+          addrEl.style.borderColor = 'rgba(255, 255, 255, 0.15)';
         }, 2000);
       }
       // 如果success为false，说明已经显示了选择框，不需要额外处理
       
     } catch (error) {
       // 复制失败
-      copyHint.textContent = '复制失败，请手动复制';
-      copyHint.style.color = '#ff6b6b';
+      copyBtn.textContent = '复制失败';
       setTimeout(() => {
-        copyHint.textContent = '点击复制';
-        copyHint.style.color = '#ccc';
+        copyBtn.textContent = '复制地址';
       }, 2000);
     }
-  });
+  };
 
+  copyBtn.addEventListener('click', handleCopy);
+  copyBtn.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    handleCopy();
+  }, { passive: false });
+
+  box.appendChild(copyBtn);
   overlay.appendChild(box);
   document.body.appendChild(overlay);
 } 

@@ -147,8 +147,8 @@
           return;
         }
 
-        const ok = await verifyZpub(z);
-        if (!ok) {
+        const result = await verifyZpub(z);
+        if (!result || result.ok !== true) {
           errorEl.textContent = '无权限或 zpub 不匹配';
           return;
         }

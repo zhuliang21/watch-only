@@ -532,8 +532,17 @@
         </div>
     </div>
 
-    <div id="balanceTop" style="position:fixed;top:40px;left:50%;transform:translateX(-50%);z-index:100;text-align:center;">
-        <h2 id="mainBalance" style="margin:0;font-size:28px;color:#f7931a;font-family:'SFMono-Regular',Menlo,Consolas,'Liberation Mono',monospace;text-align:center;white-space:nowrap;cursor:pointer;"></h2>
+    <div id="balanceTop" style="
+        position:fixed;
+        top:40px;
+        left:50%;
+        transform:translateX(-50%);
+        z-index:100;
+        text-align:center;
+        width:fit-content;
+        max-width:86vw;
+    ">
+        <h2 id="mainBalance" style="margin:0;color:#f7931a;font-family:'SFMono-Regular',Menlo,Consolas,'Liberation Mono',monospace;text-align:center;cursor:pointer;line-height:1.1;"></h2>
         <div id="incomingBalance" style="
             margin-top:8px;
             height:26px;
@@ -549,6 +558,19 @@
             transition:opacity 0.2s ease;
         ">
             <span style="opacity:0.7;">未确认：</span> <span id="incomingAmount"></span>
+        </div>
+        <div id="recentTxPanel" style="
+            margin-top:12px;
+            width:100%;
+            max-width:86vw;
+            padding:6px 2px;
+            background:transparent;
+            font-family:'SFMono-Regular',Menlo,Consolas,'Liberation Mono',monospace;
+            font-size:12px;
+            color:#d0d0d0;
+            text-align:center;
+        ">
+            <div id="recentTxList" style="text-align:center;"></div>
         </div>
     </div>
 
@@ -803,6 +825,11 @@
 <script src="dist/history.bundle.js"></script>
 <script src="dist/update.bundle.js"></script>
     <script>
+      window.GATE_CONFIG = {
+        requireServer: true,
+        allowLocalFallback: location.hostname === 'localhost' || location.hostname === '127.0.0.1'
+      };
+
       const verifyZpub = window.verifyZpub;
       const overlay = document.getElementById('gateOverlay');
       const btn = document.getElementById('gateBtn');
@@ -877,10 +904,21 @@
         btn.disabled = true;
         btn.querySelector('span').textContent = '验证中…';
 
-        const ok = await verifyZpub(z);
-        if (!ok) {
+        const result = await verifyZpub(z);
+        if (!result || result.ok !== true) {
           btn.disabled = false;
+          const reason = result && result.reason ? result.reason : 'unauthorized';
           btn.querySelector('span').textContent = '无授权';
+          if (reason === 'server_required') {
+            err.textContent = '需要配置服务端校验地址 (gate-verify-url)';
+            err.style.display = 'block';
+          } else if (reason === 'server_unreachable') {
+            err.textContent = '服务端校验不可用，请稍后重试';
+            err.style.display = 'block';
+          } else if (reason === 'server_reject' || reason === 'local_reject') {
+            err.textContent = '未通过授权校验';
+            err.style.display = 'block';
+          }
           setTimeout(() => {
             btn.querySelector('span').textContent = '进入';
           }, 3000);
@@ -917,12 +955,17 @@
           if(!tb){return;}
           const balEl=document.getElementById('mainBalance');
           if(balEl){
-            balEl.textContent=tb.btc;
+            const sat = typeof tb.satoshi === 'number' ? tb.satoshi : Math.round((tb.btc || 0) * 1e8);
+            balEl.innerHTML = `
+              <div style="font-size:28px;">${sat.toLocaleString('en-US')}</div>
+              <div style="font-size:14px;opacity:0.7;margin-top:4px;">sats</div>
+            `;
             balEl.style.color='#f7931a'; // 确保比特币余额显示为正确的黄色
           }
           
           // 更新 incoming 信息
           updateIncomingBalance();
+          renderRecentTxs();
         }catch(e){console.error(e);}
       }
 
@@ -958,6 +1001,92 @@
           }
         }catch(e){console.error(e);}
       }
+
+      async function resolveTimeZone(){
+        if (localStorage.userTimeZone) return localStorage.userTimeZone;
+        try {
+          const res = await fetch('https://ipapi.co/json/');
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.timezone) {
+              localStorage.userTimeZone = data.timezone;
+              return data.timezone;
+            }
+          }
+        } catch (e) {
+          // ignore and fall back to browser tz
+        }
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if (tz) localStorage.userTimeZone = tz;
+        return tz;
+      }
+
+      function formatLocalTime(ts, timeZone){
+        const dtf = new Intl.DateTimeFormat('en-US', {
+          timeZone,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        });
+        const parts = dtf.formatToParts(new Date(ts * 1000));
+        const get = (type) => parts.find((p) => p.type === type)?.value || '';
+        return `${get('year')}/${get('month')}/${get('day')} ${get('hour')}:${get('minute')}`;
+      }
+
+      function renderRecentTxs(){
+        const listEl = document.getElementById('recentTxList');
+        if (!listEl) return;
+        let deltas = [];
+        let mempool = [];
+        try {
+          deltas = JSON.parse(localStorage.txDeltas || '[]');
+        } catch (e) {
+          deltas = [];
+        }
+        try {
+          mempool = JSON.parse(localStorage.mempoolTxDeltas || '[]');
+        } catch (e) {
+          mempool = [];
+        }
+        if (!deltas.length) {
+          if (!mempool.length) {
+            listEl.innerHTML = '<div style="opacity:0.6;">暂无交易记录</div>';
+            return;
+          }
+        }
+        const merged = [
+          ...deltas.map((d) => ({ ...d, mempool: false })),
+          ...mempool.map((d) => ({ ...d, mempool: true }))
+        ];
+
+        const recent = merged.sort((a, b) => b.ts - a.ts).slice(0, 3);
+        if (!recent.length) {
+          listEl.innerHTML = '<div style="opacity:0.6;">暂无交易记录</div>';
+          return;
+        }
+        const tz = localStorage.userTimeZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+        listEl.innerHTML = recent.map((d) => {
+          const amountSat = Math.abs(d.d);
+          const isPositive = d.d >= 0;
+          const color = isPositive ? '#00d4aa' : '#ff6b6b';
+          const sign = isPositive ? '+' : '-';
+          const timeStr = formatLocalTime(d.ts, tz);
+          const dateStr = timeStr.split(' ')[0];
+          const tag = d.mempool ? '<span style="opacity:0.5;margin-left:6px;">未确认</span>' : '';
+          return `
+            <div style="text-align:center;margin:4px 0 14px 0;">
+              <div style="opacity:0.7;">${dateStr}</div>
+              <div style="color:${color};margin-top:4px;">${sign}${amountSat} sats${tag}</div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      window.renderRecentTxs = renderRecentTxs;
+      resolveTimeZone();
 
       // 余额显示切换功能
       let isShowingRMB = false;

@@ -97,19 +97,12 @@ window.drawBalanceChart=function(){
     const data=JSON.parse(localStorage.balanceTimeline||'[]');
     if(!data.length) throw new Error('请先生成余额表');
     const labels=data.map(d=>d.date);
-    const balances=data.map(d=>d.balance/1e8); // BTC
-    const currentBalance = balances[balances.length - 1];
+    const balances=data.map(d=>d.balance/1e8); // BTC for chart scale
+    const currentBalanceSat = data[data.length - 1].balance;
     
     // 更新右侧余额显示
     const balanceDisplay = document.getElementById('balanceDisplay');
-    const formatBalance = (balance) => {
-      if (balance >= 1) {
-        return `₿${balance.toFixed(8)}`;
-      } else {
-        return `₿${balance.toFixed(8)}`;
-      }
-    };
-    balanceDisplay.textContent = formatBalance(currentBalance);
+    balanceDisplay.textContent = `${currentBalanceSat.toLocaleString('en-US')} sats`;
     
     // 显示当前日期（与余额对应）
     let dateDisplay = document.getElementById('dateDisplay');

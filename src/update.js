@@ -117,6 +117,7 @@ async function performAutoDetection() {
       addToDetectionLog('📈 检测到余额变化，刷新交易历史与余额表');
       if (window.fetchTxHistory) await window.fetchTxHistory();
       if (window.buildBalanceTable) window.buildBalanceTable();
+      if (window.renderRecentTxs) window.renderRecentTxs();
     } else {
       addToDetectionLog('⚖️ 余额无变化');
     }
@@ -379,27 +380,54 @@ window.checkMempoolIncoming = async function () {
       if (!res.ok) throw new Error('mempool API 错误: ' + res.status);
       const txs = await res.json();
       let net = 0;
+      const txMap = new Map();
       txs.forEach((tx) => {
+        let delta = 0;
         // 流入：当前交易输出到本地址
         (tx.vout || []).forEach((o) => {
-          if (o.scriptpubkey_address === addr) net += o.value; // satoshi
+          if (o.scriptpubkey_address === addr) {
+            net += o.value; // satoshi
+            delta += o.value;
+          }
         });
         // 流出：本地址的旧输出被花费
         (tx.vin || []).forEach((i) => {
           const prev = i.prevout;
-          if (prev && prev.scriptpubkey_address === addr) net -= prev.value;
+          if (prev && prev.scriptpubkey_address === addr) {
+            net -= prev.value;
+            delta -= prev.value;
+          }
         });
+        if (delta !== 0) {
+          const current = txMap.get(tx.txid) || 0;
+          txMap.set(tx.txid, current + delta);
+        }
       });
-      return net;
+      return { net, txMap };
     }
 
     // 并发查询
     const incomingValues = await Promise.all(addressSet.map(fetchIncoming));
-    const totalSat = incomingValues.reduce((a, b) => a + b, 0);
+    const totalSat = incomingValues.reduce((a, b) => a + b.net, 0);
+    const combinedTx = new Map();
+    incomingValues.forEach((r) => {
+      r.txMap.forEach((delta, txid) => {
+        const current = combinedTx.get(txid) || 0;
+        combinedTx.set(txid, current + delta);
+      });
+    });
+    const nowTs = Math.floor(Date.now() / 1000);
+    const mempoolTxDeltas = Array.from(combinedTx.entries()).map(([txid, d]) => ({
+      txid,
+      d,
+      ts: nowTs,
+      mempool: true
+    }));
 
     const btc = (v) => (v / 1e8).toFixed(8);
     // 保存汇总值到 localStorage（不保存地址列表）
     localStorage.setItem('mempoolIncomingTotal', JSON.stringify({ totalSat, time: Date.now() }));
+    localStorage.setItem('mempoolTxDeltas', JSON.stringify(mempoolTxDeltas));
 
     setStatus(`未确认收入: ${btc(totalSat)} BTC`);
     if (typeof window.refreshSummary === 'function') window.refreshSummary();
