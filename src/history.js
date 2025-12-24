@@ -117,6 +117,13 @@ window.drawBalanceChart=function(){
     const labels=data.map(d=>d.local || d.date);
     const balances=data.map(d=>d.balance/1e8); // BTC for chart scale
     const currentBalanceSat = data[data.length - 1].balance;
+    const currentBalance = balances[balances.length - 1];
+    
+    // 格式化余额显示（BTC -> sats）
+    const formatBalance = (btcValue) => {
+      const sats = Math.round(btcValue * 1e8);
+      return `${sats.toLocaleString('en-US')} sats`;
+    };
     
     // 更新右侧余额显示
     const balanceDisplay = document.getElementById('balanceDisplay');
@@ -143,6 +150,13 @@ window.drawBalanceChart=function(){
     
     const ctx=document.getElementById('balanceChart').getContext('2d');
     if(chartInstance) chartInstance.destroy();
+    
+    // 计算固定的 Y 轴范围，避免悬停时缩放变化
+    const minBalance = Math.min(...balances);
+    const maxBalance = Math.max(...balances);
+    const padding = (maxBalance - minBalance) * 0.1 || 0.0001; // 10% padding
+    const yMin = minBalance - padding;
+    const yMax = maxBalance + padding;
     
     // 当前悬停索引用于分段着色
     let hoverIndex = balances.length - 1;
@@ -205,6 +219,8 @@ window.drawBalanceChart=function(){
           y:{
             display: false,
             beginAtZero: false,
+            min: yMin,
+            max: yMax,
             grid: {
               display: false
             }

@@ -169,13 +169,10 @@
       window.refreshSummary = function() {
         const total = JSON.parse(localStorage.getItem('totalBalance') || 'null');
         const mempool = JSON.parse(localStorage.getItem('mempoolIncomingTotal') || 'null');
-        const rmb = JSON.parse(localStorage.getItem('rmbPrice') || 'null');
         const totalEl = document.getElementById('summaryTotalBalance');
         const mpEl = document.getElementById('summaryMempool');
-        const rmbEl = document.getElementById('summaryRMB');
         if(totalEl) totalEl.textContent = total ? `${total.btc} BTC` : '--';
         if(mpEl) mpEl.textContent = mempool ? `${(mempool.totalSat/1e8).toFixed(8)} BTC` : '--';
-        if(rmbEl) rmbEl.textContent = rmb ? `¥${rmb.totalRMB.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '--';
       };
     </script>
 
@@ -185,7 +182,6 @@
         <button onclick="getReceiveAddress()">接收地址</button>
         <button onclick="computeTotalBalance()">计算总余额</button>
         <button onclick="checkMempoolIncoming()">检测未确认收入</button>
-        <button onclick="queryRMBPrice()">查询人民币价格</button>
         <button onclick="fetchTxHistory()">拉取交易</button>
         <button onclick="buildBalanceTable()">生成余额表</button>
         <button onclick="drawBalanceChart()">生成余额曲线</button>
@@ -222,8 +218,6 @@
         <strong>总余额:</strong> <span id="summaryTotalBalance">--</span>
         &nbsp;&nbsp;|&nbsp;&nbsp;
         <strong>未确认总额:</strong> <span id="summaryMempool">--</span>
-        &nbsp;&nbsp;|&nbsp;&nbsp;
-        <strong>人民币价值:</strong> <span id="summaryRMB">--</span>
     </div>
 </body>
 </html> 

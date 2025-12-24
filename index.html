@@ -1100,38 +1100,6 @@
       window.renderRecentTxs = renderRecentTxs;
       resolveTimeZone();
 
-      // 余额显示切换功能
-      let isShowingRMB = false;
-      let rmbTimeout = null;
-      
-      function showRMBBalance() {
-        if (isShowingRMB) return; // 防止重复点击
-        
-        try {
-          const rmbData = JSON.parse(localStorage.getItem('rmbPrice') || 'null');
-          if (!rmbData || !rmbData.totalRMB) return;
-          
-          const balEl = document.getElementById('mainBalance');
-          if (!balEl) return;
-          
-          isShowingRMB = true;
-          
-          // 显示人民币余额（整数位，百元粉色）
-          balEl.textContent = `¥ ${Math.round(rmbData.totalRMB).toLocaleString('zh-CN')}`;
-          balEl.style.color = '#f4a6b4'; // 百元粉色（更接近真实颜色）
-          
-          // 3秒后恢复比特币显示
-          if (rmbTimeout) clearTimeout(rmbTimeout);
-          rmbTimeout = setTimeout(() => {
-            updateMainBalance(); // 恢复比特币余额显示（包含正确的颜色）
-            isShowingRMB = false;
-          }, 3000);
-          
-        } catch (e) {
-          console.error('显示人民币余额失败:', e);
-        }
-      }
-
       // 自动检测功能
       function startAutoDetectionOnIndex() {
         // 检查是否有必要的数据才启动自动检测
@@ -1174,12 +1142,6 @@
         if (localStorage.currentZpub) {
           setTimeout(startAutoDetectionOnIndex, 2000); // 延迟2秒确保所有脚本加载完成
           setTimeout(setupAutoUpdateListener, 3000); // 延迟3秒后开始监听更新
-        }
-        
-        // 添加余额点击事件
-        const balEl = document.getElementById('mainBalance');
-        if (balEl) {
-          balEl.addEventListener('click', showRMBBalance);
         }
       });
 

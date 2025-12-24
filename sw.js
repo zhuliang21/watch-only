@@ -1,33 +1,34 @@
 // Basic service worker for Bitcoin Watch-Only Wallet PWA
 // Bump cache name to invalidate old bundles
-const CACHE_NAME = 'btc-wallet-cache-v4';
+const CACHE_NAME = 'btc-wallet-cache-v6';
 const OFFLINE_URLS = [
-  '/',
   '/index.html',
   '/manifest.json',
-  // Bundle paths match the script tags in index.html (served from /dist)
   '/dist/generate.bundle.js',
   '/dist/check.bundle.js',
   '/dist/history.bundle.js',
   '/dist/gate.bundle.js',
   '/dist/update.bundle.js',
-  // Keep legacy paths for users with older HTML
-  '/generate.bundle.js',
-  '/check.bundle.js',
-  '/history.bundle.js',
-  '/gate.bundle.js',
-  '/update.bundle.js',
-  // WASM if present
-  '/dist/28fa7cbe306896ab29dd.module.wasm',
-  // Icons for PWA install/offline shell
-  '/favicon.ico',
-  '/icon/icon-192.png',
-  '/icon/icon-512.png',
+  '/favicon.ico'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(OFFLINE_URLS))
+    caches.open(CACHE_NAME).then((cache) => {
+      // Use addAll but catch individual failures
+      return cache.addAll(OFFLINE_URLS).catch((err) => {
+        console.error('Cache addAll failed:', err);
+        // Try adding individually to see which ones succeed
+        return Promise.all(
+          OFFLINE_URLS.map((url) => {
+            return cache.add(url).catch((e) => {
+              console.warn('Failed to cache:', url, e);
+              return null;
+            });
+          })
+        );
+      });
+    })
   );
   // 强制新的Service Worker立即激活
   self.skipWaiting();
@@ -59,7 +60,31 @@ self.addEventListener('message', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request).then((cached) => cached || fetch(event.request))
-  );
+  const url = new URL(event.request.url);
+  
+  // For bundle.js files, use network-first strategy to ensure fresh code
+  if (url.pathname.includes('.bundle.js')) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          // Cache the fresh response
+          if (response.ok) {
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseClone);
+            });
+          }
+          return response;
+        })
+        .catch(() => {
+          // Fallback to cache if network fails
+          return caches.match(event.request);
+        })
+    );
+  } else {
+    // For other resources, use cache-first
+    event.respondWith(
+      caches.match(event.request).then((cached) => cached || fetch(event.request))
+    );
+  }
 }); 

@@ -98,12 +98,6 @@ async function performAutoDetection() {
     window.computeTotalBalance && window.computeTotalBalance();
     addToDetectionLog('💰 总余额已更新');
     
-    // 查询人民币价格
-    if (window.queryRMBPrice) {
-      await window.queryRMBPrice();
-      addToDetectionLog('💴 人民币价格已更新');
-    }
-    
     // 更新未确认余额（mempool）
     if (window.checkMempoolIncoming) {
       await window.checkMempoolIncoming();
@@ -304,194 +298,76 @@ window.getAutoDetectStatus = function() {
 // 查询 mempool 中流入这些地址的 satoshi 总额，并与上次结果比较。
 // ----------------------------------------
 window.checkMempoolIncoming = async function () {
-  const statusEl = document.getElementById('status');
-  const errorEl = document.getElementById('error');
-  const setStatus = (msg) => { statusEl ? statusEl.textContent = msg : console.log('STATUS:', msg); };
-  const setError = (msg) => { errorEl ? errorEl.textContent = msg : console.error('ERROR:', msg); };
-  if (statusEl) statusEl.textContent = '';
-  if (errorEl) errorEl.textContent = '';
-
+  // 简化版 mempool 检测：只查询第一个未使用的 payment 地址
+  // 避免大量 API 请求导致超时和报错
   try {
-    // 读取状态与地址列表
     const statuses = JSON.parse(localStorage.getItem('addressStatuses') || '[]');
     const paymentList = JSON.parse(localStorage.getItem('paymentAddresses') || '[]');
-    const changeList = JSON.parse(localStorage.getItem('changeAddresses') || '[]');
 
-    if (!statuses.length || (!paymentList.length && !changeList.length)) {
-      throw new Error('请先生成地址并检查地址状态');
+    if (!statuses.length || !paymentList.length) {
+      return; // 静默返回
     }
 
-    // 帮助函数：解析路径中的索引数字 m/0/i 或 m/1/i
-    const getIndex = (path) => {
-      const parts = path.split('/');
-      return parseInt(parts[parts.length - 1], 10);
-    };
-
-    // 找到最后一个已使用的 payment 与 change 地址索引
-    const lastUsedIdx = (branchPrefix) => {
-      const used = statuses
-        .filter((s) => s.used && s.path.startsWith(branchPrefix))
-        .map((s) => getIndex(s.path));
-      if (!used.length) return -1;
-      return Math.max(...used);
-    };
-
-    const lastPayIdx = lastUsedIdx('m/0/');
-    const lastChangeIdx = lastUsedIdx('m/1/');
-
-    if (lastPayIdx === -1 && lastChangeIdx === -1) {
-      throw new Error('尚未检测到任何已使用地址');
-    }
-
-    // 选取目标地址：各分支最后已用 + 后两个 (若存在)
-    function collectTargets(list, lastIdx) {
-      const targets = [];
-      if (lastIdx >= 0 && list[lastIdx]) targets.push(list[lastIdx]);
-      for (let offset = 1; offset <= 2; offset++) {
-        const idx = lastIdx + offset;
-        if (idx >= 0 && list[idx]) targets.push(list[idx]);
+    // 找第一个未使用的 payment 地址
+    let targetAddr = null;
+    for (const payment of paymentList) {
+      const status = statuses.find(s => s.address === payment.address);
+      if (status && !status.used) {
+        targetAddr = payment.address;
+        break;
       }
-      return targets;
     }
 
-    const targets = [
-      ...collectTargets(paymentList, lastPayIdx),
-      ...collectTargets(changeList, lastChangeIdx)
-    ];
-
-    // 加入所有当前余额大于0的地址
-    const balanceAddrs = statuses.filter((s) => (s.balance || 0) > 0).map((s) => s.address);
-
-    const addressSet = Array.from(
-      new Set([
-        ...targets.map((t) => t.address),
-        ...balanceAddrs
-      ])
-    );
-
-    if (!addressSet.length) {
-      throw new Error('无法确定查询地址');
+    if (!targetAddr) {
+      // 没有未使用地址，使用最后一个 payment 地址
+      targetAddr = paymentList[paymentList.length - 1]?.address;
     }
 
-    // 查询单地址 mempool
-    async function fetchIncoming(addr) {
-      const url = `https://blockstream.info/api/address/${addr}/txs/mempool`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('mempool API 错误: ' + res.status);
+    if (!targetAddr) return;
+
+    // 查询单个地址的 mempool（带 5 秒超时）
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    try {
+      const url = `https://blockstream.info/api/address/${targetAddr}/txs/mempool`;
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
+      if (!res.ok) return;
+
       const txs = await res.json();
-      let net = 0;
-      const txMap = new Map();
+      let totalSat = 0;
+      const mempoolTxDeltas = [];
+      const nowTs = Math.floor(Date.now() / 1000);
+
       txs.forEach((tx) => {
         let delta = 0;
-        // 流入：当前交易输出到本地址
         (tx.vout || []).forEach((o) => {
-          if (o.scriptpubkey_address === addr) {
-            net += o.value; // satoshi
+          if (o.scriptpubkey_address === targetAddr) {
             delta += o.value;
           }
         });
-        // 流出：本地址的旧输出被花费
         (tx.vin || []).forEach((i) => {
           const prev = i.prevout;
-          if (prev && prev.scriptpubkey_address === addr) {
-            net -= prev.value;
+          if (prev && prev.scriptpubkey_address === targetAddr) {
             delta -= prev.value;
           }
         });
         if (delta !== 0) {
-          const current = txMap.get(tx.txid) || 0;
-          txMap.set(tx.txid, current + delta);
+          totalSat += delta;
+          mempoolTxDeltas.push({ txid: tx.txid, d: delta, ts: nowTs, mempool: true });
         }
       });
-      return { net, txMap };
+
+      localStorage.setItem('mempoolIncomingTotal', JSON.stringify({ totalSat, time: Date.now() }));
+      localStorage.setItem('mempoolTxDeltas', JSON.stringify(mempoolTxDeltas));
+      if (typeof window.refreshSummary === 'function') window.refreshSummary();
+    } catch (err) {
+      clearTimeout(timeoutId);
+      // 静默失败，不输出错误
     }
-
-    // 并发查询
-    const incomingValues = await Promise.all(addressSet.map(fetchIncoming));
-    const totalSat = incomingValues.reduce((a, b) => a + b.net, 0);
-    const combinedTx = new Map();
-    incomingValues.forEach((r) => {
-      r.txMap.forEach((delta, txid) => {
-        const current = combinedTx.get(txid) || 0;
-        combinedTx.set(txid, current + delta);
-      });
-    });
-    const nowTs = Math.floor(Date.now() / 1000);
-    const mempoolTxDeltas = Array.from(combinedTx.entries()).map(([txid, d]) => ({
-      txid,
-      d,
-      ts: nowTs,
-      mempool: true
-    }));
-
-    const btc = (v) => (v / 1e8).toFixed(8);
-    // 保存汇总值到 localStorage（不保存地址列表）
-    localStorage.setItem('mempoolIncomingTotal', JSON.stringify({ totalSat, time: Date.now() }));
-    localStorage.setItem('mempoolTxDeltas', JSON.stringify(mempoolTxDeltas));
-
-    setStatus(`未确认收入: ${btc(totalSat)} BTC`);
-    if (typeof window.refreshSummary === 'function') window.refreshSummary();
   } catch (err) {
-    setError('检测未确认收入失败: ' + err.message);
+    // 静默失败
   }
 };
-
-// ----------------------------------------
-// 查询人民币价格
-// 通过 API 获取比特币对人民币汇率，计算总资产人民币价值并写入 localStorage
-// ----------------------------------------
-window.queryRMBPrice = async function () {
-  const statusEl = document.getElementById('status');
-  const errorEl = document.getElementById('error');
-  const setStatus = (msg) => { statusEl ? statusEl.textContent = msg : console.log('STATUS:', msg); };
-  const setError = (msg) => { errorEl ? errorEl.textContent = msg : console.error('ERROR:', msg); };
-  if (statusEl) statusEl.textContent = '';
-  if (errorEl) errorEl.textContent = '';
-
-  try {
-    // 读取当前比特币总余额
-    const totalBalance = JSON.parse(localStorage.getItem('totalBalance') || 'null');
-    if (!totalBalance || !totalBalance.btc) {
-      throw new Error('请先计算总余额');
-    }
-
-    const btcAmount = totalBalance.btc;
-
-    // 查询比特币对人民币汇率 - 使用 CoinGecko API
-    setStatus('正在查询比特币价格...');
-    const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=cny');
-    
-    if (!response.ok) {
-      throw new Error(`API 请求失败: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const btcPriceCNY = data.bitcoin?.cny;
-
-    if (!btcPriceCNY) {
-      throw new Error('无法获取比特币价格数据');
-    }
-
-    // 计算总人民币价值
-    const totalRMB = btcAmount * btcPriceCNY;
-
-    // 保存到 localStorage
-    const priceData = {
-      btcPriceCNY,
-      btcAmount,
-      totalRMB,
-      timestamp: Date.now(),
-      updateTime: new Date().toLocaleString('zh-CN')
-    };
-
-    localStorage.setItem('rmbPrice', JSON.stringify(priceData));
-
-    // 更新页面显示
-    if (typeof window.refreshSummary === 'function') window.refreshSummary();
-
-    setStatus(`₿ 1 = ¥${btcPriceCNY.toLocaleString('zh-CN')} | 总价值: ¥${totalRMB.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
-
-  } catch (err) {
-    setError('查询人民币价格失败: ' + err.message);
-  }
-}; 
