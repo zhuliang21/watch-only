@@ -1086,11 +1086,11 @@
           const color = isPositive ? '#00d4aa' : '#ff6b6b';
           const sign = isPositive ? '+' : '-';
           const timeStr = formatLocalTime(d.ts, tz);
-          const dateStr = timeStr.split(' ')[0];
+          const [dateStr, hhmm] = timeStr.split(' ');
           const tag = d.mempool ? '<span style="opacity:0.5;margin-left:6px;">未确认</span>' : '';
           return `
             <div style="text-align:center;margin:4px 0 14px 0;">
-              <div style="opacity:0.7;">${dateStr}</div>
+              <div style="opacity:0.7;">${dateStr} ${hhmm}</div>
               <div style="color:${color};margin-top:4px;">${sign}${amountSat} sats${tag}</div>
             </div>
           `;

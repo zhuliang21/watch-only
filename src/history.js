@@ -75,8 +75,25 @@ window.buildBalanceTable=function(){
     const deltas=JSON.parse(localStorage.txDeltas||'[]');
     if(!deltas.length) throw new Error('请先拉取交易并生成 txDeltas');
     let running=0; const dayMap={};
-    deltas.forEach(d=>{running+=d.d; const date=new Date(d.ts*1000).toISOString().slice(0,10); dayMap[date]=running;});
-    const daily=Object.keys(dayMap).sort().map(date=>({date,balance:dayMap[date]}));
+    // 按天累积，同时记录当天最后一次交易的本地时间字符串
+    deltas.forEach(d=>{
+      running+=d.d;
+      const ts = d.ts * 1000;
+      const dateObj = new Date(ts);
+      const dateKey = dateObj.toISOString().slice(0,10);
+      dayMap[dateKey] = {
+        balance: running,
+        ts,
+        // 使用本地时区格式化，提供日期+时间
+        local: dateObj.toLocaleString()
+      };
+    });
+    const daily=Object.keys(dayMap).sort().map(date=>({
+      date,
+      balance: dayMap[date].balance,
+      ts: dayMap[date].ts,
+      local: dayMap[date].local
+    }));
     localStorage.setItem('balanceTimeline',JSON.stringify(daily));
     setStatus('余额表已生成，共 '+daily.length+' 天 (balanceTimeline)');
   }catch(e){console.error(e);setError('生成失败: '+e.message);}
@@ -96,7 +113,8 @@ window.drawBalanceChart=function(){
   try{
     const data=JSON.parse(localStorage.balanceTimeline||'[]');
     if(!data.length) throw new Error('请先生成余额表');
-    const labels=data.map(d=>d.date);
+    // 默认显示日期+时间（本地时区），兼容旧数据
+    const labels=data.map(d=>d.local || d.date);
     const balances=data.map(d=>d.balance/1e8); // BTC for chart scale
     const currentBalanceSat = data[data.length - 1].balance;
     

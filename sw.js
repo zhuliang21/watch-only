@@ -1,13 +1,28 @@
 // Basic service worker for Bitcoin Watch-Only Wallet PWA
-const CACHE_NAME = 'btc-wallet-cache-v3';
+// Bump cache name to invalidate old bundles
+const CACHE_NAME = 'btc-wallet-cache-v4';
 const OFFLINE_URLS = [
   '/',
+  '/index.html',
   '/manifest.json',
+  // Bundle paths match the script tags in index.html (served from /dist)
+  '/dist/generate.bundle.js',
+  '/dist/check.bundle.js',
+  '/dist/history.bundle.js',
+  '/dist/gate.bundle.js',
+  '/dist/update.bundle.js',
+  // Keep legacy paths for users with older HTML
   '/generate.bundle.js',
   '/check.bundle.js',
   '/history.bundle.js',
   '/gate.bundle.js',
-  '/update.bundle.js'
+  '/update.bundle.js',
+  // WASM if present
+  '/dist/28fa7cbe306896ab29dd.module.wasm',
+  // Icons for PWA install/offline shell
+  '/favicon.ico',
+  '/icon/icon-192.png',
+  '/icon/icon-512.png',
 ];
 
 self.addEventListener('install', (event) => {
