@@ -353,70 +353,53 @@ function showQrModal(address) {
     transition: all 0.3s ease;
   `;
 
-  // 改进的复制函数，兼容iOS Safari
+  // 更稳的复制函数（iOS 也会优先尝试 Clipboard API，失败再降级）
   const copyToClipboard = async (text) => {
-    // 检测是否是iOS Safari
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
-    
-    try {
-      // 优先尝试现代API
-      if (navigator.clipboard && window.isSecureContext && !isIOS) {
+    const isIOS =
+      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPadOS masquerade
+
+    // 1) 优先使用 Clipboard API（iOS 若可用也尝试）
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      try {
         await navigator.clipboard.writeText(text);
         return true;
+      } catch (e) {
+        // fall through
       }
-      
-      // iOS Safari fallback: 创建临时输入框
-      const textArea = document.createElement('textarea');
-      textArea.value = text;
-      textArea.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 2em;
-        height: 2em;
-        padding: 0;
-        border: none;
-        outline: none;
-        boxShadow: none;
-        background: transparent;
-        opacity: 0;
-        z-index: -1;
-      `;
-      
-      document.body.appendChild(textArea);
-      
-      // iOS需要特殊处理
-      if (isIOS) {
-        const range = document.createRange();
-        range.selectNodeContents(textArea);
-        const selection = window.getSelection();
-        selection.removeAllRanges();
-        selection.addRange(range);
-        textArea.setSelectionRange(0, 999999);
-      } else {
-        textArea.focus();
-        textArea.select();
-      }
-      
-      const successful = document.execCommand('copy');
-      document.body.removeChild(textArea);
-      
-      if (successful) {
-        return true;
-      }
-      
-      // 最后的fallback - 提示用户手动选择
-      throw new Error('复制失败');
-      
-    } catch (error) {
-      // 对于iOS Safari，显示一个可选择的文本框
-      if (isIOS && isSafari) {
-        showSelectableText(text);
-        return false; // 返回false表示需要用户手动操作
-      }
-      throw error;
     }
+
+    // 2) execCommand fallback（iOS 需要可 focus/可选中，避免 z-index:-1）
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.top = '0';
+    ta.style.left = '0';
+    ta.style.width = '1px';
+    ta.style.height = '1px';
+    ta.style.opacity = '0';
+    ta.style.zIndex = '2147483647';
+    document.body.appendChild(ta);
+
+    // iOS/非 iOS 统一处理：focus -> select -> setSelectionRange
+    ta.focus();
+    ta.select();
+    ta.setSelectionRange(0, ta.value.length);
+
+    let ok = false;
+    try {
+      ok = document.execCommand('copy');
+    } catch (e) {
+      ok = false;
+    }
+    document.body.removeChild(ta);
+
+    if (ok) return true;
+
+    // 3) 兜底：弹出可选择文本，让用户长按复制
+    showSelectableText(text);
+    return false;
   };
 
   // 显示可选择的文本（iOS Safari专用）
@@ -514,7 +497,13 @@ function showQrModal(address) {
           addrEl.style.borderColor = 'rgba(255, 255, 255, 0.15)';
         }, 2000);
       }
-      // 如果success为false，说明已经显示了选择框，不需要额外处理
+      // success=false 表示已弹出“长按复制”文本框
+      if (!success) {
+        copyBtn.textContent = '长按复制';
+        setTimeout(() => {
+          copyBtn.textContent = '复制地址';
+        }, 2000);
+      }
       
     } catch (error) {
       // 复制失败
@@ -526,10 +515,7 @@ function showQrModal(address) {
   };
 
   copyBtn.addEventListener('click', handleCopy);
-  copyBtn.addEventListener('touchend', (e) => {
-    e.preventDefault();
-    handleCopy();
-  }, { passive: false });
+  // 不再额外绑定 touchend + preventDefault，避免在 iOS 上破坏用户手势/触发两次
 
   box.appendChild(copyBtn);
   overlay.appendChild(box);
